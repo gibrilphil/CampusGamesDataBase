@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWF Player - Timeline Control</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #000; font-family: sans-serif;
+        }
+
+        #player-container {
+            width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Timeline Overlay Styles */
+        #timeline-overlay {
+            position: fixed;
+            bottom: -100px; /* Hidden by default */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            transition: bottom 0.3s ease-in-out;
+            color: white;
+            text-align: center;
+            z-index: 999;
+        }
+
+        #timeline-overlay.active { bottom: 0; }
+
+        input[type=range] { width: 100%; cursor: pointer; }
+        
+        .info { font-size: 12px; margin-top: 5px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+    <div id="player-container"></div>
+
+    <div id="timeline-overlay">
+        <div id="frame-display">Frame: 0 / 0</div>
+        <input type="range" id="frame-slider" min="1" max="100" value="1">
+        <div class="info">Press <strong>Q</strong> to close timeline</div>
+    </div>
+
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    
+    <script>
+        let player;
+        const overlay = document.getElementById('timeline-overlay');
+        const slider = document.getElementById('frame-slider');
+        const display = document.getElementById('frame-display');
+
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.addEventListener("load", (event) => {
+            const ruffle = window.RufflePlayer.newest();
+            player = ruffle.createPlayer();
+            document.getElementById("player-container").appendChild(player);
+            
+            player.load({
+                url: "https://file.garden/Zya8-gItADlYXzdp/365143_Impossible_Quiz_Deluxe_NG..swf",
+                letterbox: "on"
+            });
+        });
+
+        // Toggle Timeline with "Q"
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'q') {
+                overlay.classList.toggle('active');
+                if (overlay.classList.contains('active')) {
+                    updateSliderRange();
+                }
+            }
+        });
+
+        function updateSliderRange() {
+            // Access the root movie clip to get frame counts
+            const metadata = player.metadata;
+            const instance = player.getRootMovie(); 
+            
+            // Note: Some SWFs load frames dynamically. 
+            // We use a high guestimate or total frames if available.
+            if (instance) {
+                slider.max = instance.totalFrames || 10000;
+                slider.value = instance.currentFrame || 1;
+            }
+        }
+
+        // Scrubbing logic
+        slider.addEventListener('input', () => {
+            const frame = parseInt(slider.value);
+            const instance = player.getRootMovie();
+            if (instance) {
+                instance.gotoAndPlay(frame);
+                display.innerText = `Frame: ${frame} / ${instance.totalFrames}`;
+            }
+        });
+
+        // Update slider position as game plays naturally
+        setInterval(() => {
+            const instance = player.getRootMovie();
+            if (instance && !overlay.matches(':active')) {
+                slider.value = instance.currentFrame;
+                display.innerText = `Frame: ${instance.currentFrame} / ${instance.totalFrames}`;
+            }
+        }, 100);
+    </script>
+</body>
+</html>
